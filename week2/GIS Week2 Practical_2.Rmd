@@ -1,0 +1,17 @@
+---
+title: "GIS Practical 2 (week2)"
+author: "Jihye"
+date: "2026-10-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Section 2.4 - R Basics
+
+```{r}
+# Basic calculations
+1 + 5
+10 * 10
+```

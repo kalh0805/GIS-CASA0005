@@ -1,0 +1,122 @@
+
+---
+title: "GIS Week 1 Practical"
+author: "Jihye"
+date: "2026-10-08"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Load packages
+
+```{r}
+library(sf)
+library(dplyr)
+library(tidyr)
+library(tmap)
+library(readxl)
+```
+
+## 2. Import spatial and statistical data
+
+```{r}
+london <- st_read(
+  "../statistical-gis-boundaries-london/ESRI/London_Borough_Excluding_MHW.shp"
+)
+
+fly_tipping <- read_excel(
+  "../fly-tipping-borough.xlsx"
+)
+```
+
+## 3. Clean the fly-tipping data
+
+Convert the missing value symbol ":" to NA.
+
+```{r}
+fly_tipping_clean <- fly_tipping %>%
+  mutate(
+    total_action_taken = as.numeric(
+      na_if(total_action_taken, ":")
+    )
+  )
+```
+
+## 4. Reshape the data
+
+Create one row per borough and one column per year.
+
+```{r}
+fly_tipping_wide <- fly_tipping_clean %>%
+  select(code, year, total_action_taken) %>%
+  group_by(code, year) %>%
+  summarise(
+    total_action_taken = if (all(is.na(total_action_taken))) {
+      NA_real_
+    } else {
+      sum(total_action_taken, na.rm = TRUE)
+    },
+    .groups = "drop"
+  ) %>%
+  pivot_wider(
+    names_from = year,
+    values_from = total_action_taken
+  )
+
+dim(fly_tipping_wide)
+```
+
+## 5. Join statistical data to spatial data
+
+Join the two datasets using borough codes.
+
+```{r}
+london_joined <- london %>%
+  left_join(
+    fly_tipping_wide,
+    by = c("GSS_CODE" = "code")
+  )
+
+dim(london_joined)
+
+sum(is.na(london_joined[["2011-12"]]))
+```
+
+## 6. Create a choropleth map
+
+The map shows the number of fly-tipping actions taken in London boroughs in 2011-12.
+
+```{r}
+tmap_mode("plot")
+
+final_map <- tm_shape(london_joined) +
+  tm_polygons(
+    fill = "2011-12",
+    fill.legend = tm_legend(
+      title = "Actions taken"
+    )
+  ) +
+  tm_title("Fly-tipping Actions in London (2011-12)")
+
+final_map
+```
+
+## 7. Export the spatial dataset
+
+```{r eval=FALSE}
+st_write(
+  london_joined,
+  "London_Fly_Tipping.gpkg"
+)
+```
+
+## 8. Interpretation
+
+The choropleth map illustrates differences in the number of fly-tipping actions taken across London boroughs.
+
+Higher numbers of actions do not necessarily indicate higher levels of fly-tipping, as enforcement and reporting practices may differ between boroughs.
